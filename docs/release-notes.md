@@ -1,5 +1,97 @@
 
-## What's Changed
+## [[0.6.1](https://github.com/L-1124/QQMusicApi/compare/v0.6.0..v0.6.1)] - 2026-05-20
+
+### Bug 修复
+
+* 传入的platform不生效 ([b19bec5](https://github.com/L-1124/QQMusicApi/commit/b19bec52f044d6508d9506f7111fea6eee5b42de)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(comment)** 支持添加评论和删除评论功能 ([dc5f568](https://github.com/L-1124/QQMusicApi/commit/dc5f5685d31f48b5dd8fc6bfcfdb6fb357884e7e)) by [@L-1124](https://github.com/L-1124)
+* **(private-message)** 新增私信接口模块 ([0ce6c77](https://github.com/L-1124/QQMusicApi/commit/0ce6c77b423c01c684cf86ff7a7ee9ca9a70d9fa)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @github-actions[bot]
+
+## [[0.6.0](https://github.com/L-1124/QQMusicApi/compare/v0.5.3..v0.6.0)] - 2026-05-09
+
+### Bug 修复
+
+* **(login)** 修改手机验证码鉴权参数类型为字符串 ([5cfebc6](https://github.com/L-1124/QQMusicApi/commit/5cfebc67cc816e0ca1930f76386fc599215496af)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(client)** 添加连接重试机制参数 ([38134a7](https://github.com/L-1124/QQMusicApi/commit/38134a74cfe9d3b623c46d74136687d9a2731848)) by [@L-1124](https://github.com/L-1124)
+* **(core)** [**breaking**] 移除 `RequestGroup`，支持 `Client.gather` 批量并发请求，重构请求速率限制参数 ([632b6a8](https://github.com/L-1124/QQMusicApi/commit/632b6a85fe509bbbab7bbe6e7ae702e34ef49440)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 添加 Docker 支持 ([b6f4dfc](https://github.com/L-1124/QQMusicApi/commit/b6f4dfc824c45cdba784904fd937495ab15065cc)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 添加 Web 服务路由 ([154d714](https://github.com/L-1124/QQMusicApi/commit/154d714f4bd918ab6b23814f841b154e5b388c94)) by [@L-1124](https://github.com/L-1124) in [#247](https://github.com/L-1124/QQMusicApi/pull/247)
+* [**breaking**] 不再支持配置 `Client` 部分参数并且修改并且初始化参数名 ([c4a7001](https://github.com/L-1124/QQMusicApi/commit/c4a7001a007128eba76b89004504b58be60c6f84)) by [@L-1124](https://github.com/L-1124)
+
+### 功能重构
+
+* **(algorithms)** [**breaking**] 移除 Web 端请求签名模块 ([21b3179](https://github.com/L-1124/QQMusicApi/commit/21b31794d89efebbf58505a4310dc95ecd9ba7f0)) by [@L-1124](https://github.com/L-1124)
+* **(core)** 重构 API 客户端, 迁移 httpx → niquests ([fc4f1b7](https://github.com/L-1124/QQMusicApi/commit/fc4f1b77f2f001331f38a178a2a16e84279a4549)) by [@L-1124](https://github.com/L-1124)
+* **(exception)** [**breaking**] 重构异常体系 ([3f7ef32](https://github.com/L-1124/QQMusicApi/commit/3f7ef3239f90cbcf3bf8ba64ab1561e89683df52)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @github-actions[bot]
+
+## [[0.5.3](https://github.com/L-1124/QQMusicApi/compare/v0.5.2..v0.5.3)] - 2026-05-01
+
+### Bug 修复
+
+* **(song)** 传递歌曲链接请求凭证 ([8667e8c](https://github.com/L-1124/QQMusicApi/commit/8667e8c16a071d5b2e96e91e90441db724d71169)) by [@L-1124](https://github.com/L-1124)
+* 模型字段类型出现`int | str` ([ed2e450](https://github.com/L-1124/QQMusicApi/commit/ed2e4503fab162ebdabae7368ffd408584f1e91a)) by [@L-1124](https://github.com/L-1124)
+* 手机登录没有正常返回验证链接 ([3f69c5d](https://github.com/L-1124/QQMusicApi/commit/3f69c5d3f51353c73ab1c9f5a6637e29dc0aebe4)) by [@L-1124](https://github.com/L-1124)
+* [**breaking**] 拼写错误及其他问题 ([6bd129e](https://github.com/L-1124/QQMusicApi/commit/6bd129eed7d9d8bd1b76fbd6389840ee295d6802)) by [@Copilot](https://github.com/Copilot) in [#242](https://github.com/L-1124/QQMusicApi/pull/242)
+
+### 功能更新
+
+* **(api)** 统一分页参数，暴露搜索一致性参数 ([a3d3a5d](https://github.com/L-1124/QQMusicApi/commit/a3d3a5d36b0b1ee85628d4bafde17551ae76e5fe)) by [@L-1124](https://github.com/L-1124)
+* **(login)** 细化登录异常体系并修正请求参数 ([fb9d2e6](https://github.com/L-1124/QQMusicApi/commit/fb9d2e6ed180b7188cc059b3a98ce67ec4760c0d)) by [@L-1124](https://github.com/L-1124) in [#245](https://github.com/L-1124/QQMusicApi/pull/245)
+
+### 贡献者
+
+* @L-1124
+* @Copilot [#242](https://github.com/L-1124/QQMusicApi/pull/242)
+* @github-actions[bot]
+
+## [[0.5.2](https://github.com/L-1124/QQMusicApi/compare/v0.5.1..v0.5.2)] - 2026-04-18
+
+### Bug 修复
+
+* `UserFavSonglistResponse`jsonpath错误 ([2c54ebb](https://github.com/L-1124/QQMusicApi/commit/2c54ebb8d21a8ba02bb5b865a7ff0aa9aadcbc0d)) by [@L-1124](https://github.com/L-1124)
+* `GetAlbumSongResponse`上游返回单个歌曲信息报错 ([adbdc40](https://github.com/L-1124/QQMusicApi/commit/adbdc4069f964125ca2228d36014f64893f3e69a)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(core)** 为 ResponsePager 添加 next 与 has_more ([0a63a26](https://github.com/L-1124/QQMusicApi/commit/0a63a264433bf37b5854064aa8ef95edba97adab)) by [@L-1124](https://github.com/L-1124)
+
+### 文档更新
+
+* **(pagination)** 修正分页示例错误 ([c310450](https://github.com/L-1124/QQMusicApi/commit/c31045021034ce130136a17b458091c456998d53)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @renovate[bot] [#240](https://github.com/L-1124/QQMusicApi/pull/240)
+* @github-actions[bot]
+
+## [[0.5.1](https://github.com/L-1124/QQMusicApi/compare/v0.5.0..v0.5.1)] - 2026-04-13
+
+### 功能更新
+
+* 获取歌曲文件支持传入歌曲类型 ([a2ad367](https://github.com/L-1124/QQMusicApi/commit/a2ad3675ac56a501f8e08e761e12c68bf6155a98)) by [@L-1124](https://github.com/L-1124)
+* [**breaking**] 重构歌曲文件获取逻辑，支持获取特殊类型的歌曲文件 ([5e31a48](https://github.com/L-1124/QQMusicApi/commit/5e31a4888cf3d4818b3cd59861ffc4d883c4ca1a)) by [@L-1124](https://github.com/L-1124)
+* 接口请求支持更方便的下一页、换一批请求 ([98693f8](https://github.com/L-1124/QQMusicApi/commit/98693f86995df7a62ca705a46643afffb3306e4a)) by [@L-1124](https://github.com/L-1124) in [#235](https://github.com/L-1124/QQMusicApi/pull/235)
+
+### 功能重构
+
+* **(login)** 优化 MQTT 登录链路并替换 HTTP 重试实现 ([244e000](https://github.com/L-1124/QQMusicApi/commit/244e000c08dce6beb3ab46c7d266c361515b4b20)) by [@L-1124](https://github.com/L-1124) in [#237](https://github.com/L-1124/QQMusicApi/pull/237)
 
 ### 文档更新
 
@@ -10,6 +102,7 @@
 ### 贡献者
 
 * @L-1124
+* @renovate[bot] [#238](https://github.com/L-1124/QQMusicApi/pull/238)
 * @github-actions[bot]
 
 ## [[0.5.0](https://github.com/L-1124/QQMusicApi/compare/v0.4.1..v0.5.0)] - 2026-04-02

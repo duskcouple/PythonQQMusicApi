@@ -3,7 +3,7 @@
 import pytest
 
 from qqmusic_api import Client
-from qqmusic_api.modules.song import EncryptedSongFileType, SongFileType
+from qqmusic_api.modules.song import EncryptedSongFileType, SongFileInfo, SongFileType
 
 
 @pytest.mark.parametrize("value", [[100], ["003w2xz20QlUZt"]])
@@ -29,14 +29,8 @@ async def test_query_song_empty_value(client: Client) -> None:
 )
 async def test_get_song_urls(client: Client, file_type: SongFileType | EncryptedSongFileType) -> None:
     """测试获取歌曲文件链接."""
-    result = await client.song.get_song_urls(mid=["003w2xz20QlUZt"], file_type=file_type)
+    result = await client.song.get_song_urls([SongFileInfo(mid="003w2xz20QlUZt", file_type=file_type)])
     assert len(result.data) == 1
-
-
-async def test_get_song_urls_empty(client: Client) -> None:
-    """测试空列表获取歌曲链接返回空结果集."""
-    result = await client.song.get_song_urls(mid=[])
-    assert result.data == []
 
 
 @pytest.mark.parametrize("value", [100, "003w2xz20QlUZt"])
@@ -52,9 +46,9 @@ async def test_get_similar_song(client: Client) -> None:
     assert result.song
 
 
-async def test_get_lables(client: Client) -> None:
+async def test_get_labels(client: Client) -> None:
     """测试获取歌曲标签."""
-    result = await client.song.get_lables(100)
+    result = await client.song.get_labels(100)
     assert result.labels is not None
 
 
@@ -68,6 +62,28 @@ async def test_get_related_mv(client: Client) -> None:
     """测试获取歌曲相关 MV."""
     result = await client.song.get_related_mv(100)
     assert result.mv is not None
+
+
+async def test_get_related_songlist_refresh(client: Client) -> None:
+    """测试歌曲相关歌单支持换一批."""
+    refresher = client.song.get_related_songlist(100).refresh()
+    first_batch = await refresher.first()
+    next_batch = await refresher.refresh()
+
+    assert first_batch.songlist
+    assert next_batch.songlist
+    assert first_batch.songlist[0].id != next_batch.songlist[0].id
+
+
+async def test_get_related_mv_refresh(client: Client) -> None:
+    """测试歌曲相关 MV 支持换一批."""
+    refresher = client.song.get_related_mv(1114857).refresh()
+    first_batch = await refresher.first()
+    next_batch = await refresher.refresh()
+
+    assert first_batch.mv
+    assert next_batch.mv
+    assert first_batch.mv[-1].id != next_batch.mv[0].id
 
 
 @pytest.mark.parametrize("value", [100, "003w2xz20QlUZt"])

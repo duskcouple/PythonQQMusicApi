@@ -1,10 +1,11 @@
 """歌曲相关 API 模块."""
 
 from enum import Enum
-from typing import Any
+from typing import Any, NamedTuple
 
 from qqmusic_api import Platform
 
+from ..core.pagination import BatchRefreshStrategy, RefreshMeta, ResponseAdapter
 from ..models.request import Credential
 from ..models.song import (
     GetCdnDispatchResponse,
@@ -122,20 +123,62 @@ class EncryptedSongFileType(BaseSongFileType):
     OGG_96 = ("O4M0", ".mgg")
 
 
+class SpecialSongFileType(BaseSongFileType):
+    """特殊歌曲文件类型.
+
+    + TRY: 歌曲试听. vs[0].
+    + ACCOM: 纯人声/伴奏轨道. vs[9].
+    + MULTI: 多轨文件. vs[18].
+    + PIANO: AI演奏-钢琴. vs[13].
+    + BAYIN: AI演奏-八音盒. vs[17].
+    + GUZHENG: AI演奏-古筝. vs[14].
+    + QUDI: AI演奏-曲笛. vs[16].
+    + HULUSI: AI演奏-葫芦丝. vs[15].
+    + SUONA: AI演奏-唢呐. vs[19].
+    + SHOUDIE: AI演奏-手碟. vs[20].
+    + GUITAR: AI演奏-电吉他. vs[21].
+    + DRUMS: AI演奏-架子鼓. vs[22].
+    + KAZOO: AI演奏-卡祖笛. vs[26].
+    + THERAPY: AI疗愈音效. vs[27].
+    """
+
+    TRY = ("RS02", ".mp3")
+    ACCOM = ("O801", ".ogg")
+    MULTI = ("O601", ".ogg")
+    PIANO = ("AI01", ".ogg")
+    BAYIN = ("AI02", ".ogg")
+    GUZHENG = ("AI03", ".ogg")
+    QUDI = ("AI04", ".ogg")
+    HULUSI = ("AI05", ".ogg")
+    SUONA = ("AI06", ".ogg")
+    SHOUDIE = ("AI07", ".ogg")
+    GUITAR = ("AI08", ".ogg")
+    DRUMS = ("AI09", ".ogg")
+    KAZOO = ("A200", ".ogg")
+    THERAPY = ("AA01", ".ogg")
+
+
+class SongFileInfo(NamedTuple):
+    """歌曲文件信息.
+
+    Attributes:
+        mid: 歌曲 MID.
+        file_type: 歌曲文件类型.
+        song_type: 歌曲类型.
+        media_mid: 媒体文件 mid.
+    """
+
+    mid: str
+    file_type: BaseSongFileType | None = None
+    song_type: int | None = None
+    media_mid: str | None = None
+
+
 class SongApi(ApiModule):
     """歌曲相关 API 模块类."""
 
     _GET_SONG_URLS_MAX_MID = 100
     _SONG_URL_FALLBACK_DOMAIN = "https://isure.stream.qqmusic.qq.com/"
-
-    def __init__(self, client) -> None:
-        """初始化歌曲模块."""
-        super().__init__(client)
-        self._SONG_URL_DOMAINS: tuple[str, ...] = ()
-        self._song_url_dispatch_data: dict[str, Any] | None = None
-        self._song_url_dispatch_refresh_at = 0.0
-        self._song_url_dispatch_expire_at = 0.0
-        self._song_url_domain_infos: dict[str, dict[str, Any]] = {}
 
     def query_song(self, value: list[int] | list[str]):
         """根据 id 或 mid 获取歌曲信息.
@@ -154,10 +197,13 @@ class SongApi(ApiModule):
             "ctx": 0,
             "client": 1,
         }
-        if isinstance(value[0], int):
-            params["ids"] = value
+        numeric_values = [isinstance(item, int) or (isinstance(item, str) and item.isdecimal()) for item in value]
+        if all(numeric_values):
+            params["ids"] = [int(v) for v in value]
+        elif any(numeric_values):
+            raise ValueError("value 不能混合歌曲 ID 与 MID")
         else:
-            params["mids"] = value
+            params["mids"] = [str(v) for v in value]
         return self._build_request(
             module="music.trackInfo.UniformRuleCtrl",
             method="CgiGetTrackInfo",
@@ -165,62 +211,53 @@ class SongApi(ApiModule):
             response_model=QuerySongResponse,
         )
 
-    def get_cdn_dispatch(
-        self,
-        *,
-        use_new_domain: bool = True,
-        use_ipv6: bool = True,
-    ):
-        """获取并缓存音频 CDN 调度信息.
-
-        Args:
-            use_new_domain: 是否启用新域名.
-            use_ipv6: 是否启用 IPv6.
-        """
+    def get_cdn_dispatch(self):
+        """获取音频链接 CDN 信息."""
         return self._build_request(
             module="music.audioCdnDispatch.cdnDispatch",
             method="GetCdnDispatch",
             param={
                 "guid": get_guid(),
                 "uid": "0",
-                "use_new_domain": int(use_new_domain),
-                "use_ipv6": int(use_ipv6),
+                "use_new_domain": 1,
+                "use_ipv6": 1,
             },
             response_model=GetCdnDispatchResponse,
         )
 
     def get_song_urls(
         self,
-        mid: list[str],
-        file_type: SongFileType | EncryptedSongFileType = SongFileType.MP3_128,
+        file_info: list[SongFileInfo],
+        file_type: BaseSongFileType = SongFileType.MP3_128,
         credential: Credential | None = None,
-        *,
-        media_mid: list[str] | None = None,
     ):
         """获取歌曲文件链接.
 
         Args:
-            mid: 歌曲 MID 列表.
+            file_info: 歌曲文件信息列表.
             file_type: 歌曲文件类型.
             credential: 凭据对象.
-            media_mid: 获取媒体文件链接时需要的 media_mid 列表,与 mid 一一对应.
 
         Raises:
             ValueError: 当 `mid` 数量超过上限时抛出.
         """
-        if len(mid) > self._GET_SONG_URLS_MAX_MID:
-            raise ValueError(f"mid 数量不能超过 {self._GET_SONG_URLS_MAX_MID}, 当前为 {len(mid)}")
-        if media_mid and len(media_mid) != len(mid):
-            raise ValueError("media_mid 必须与 mid 一一对应")
         encrypted = isinstance(file_type, EncryptedSongFileType)
         module, method = (
             ("music.vkey.GetVkey", "UrlGetVkey") if not encrypted else ("music.vkey.GetEVkey", "CgiGetEVkey")
         )
-        filename = (
-            [f"{file_type.s}{item}{item}{file_type.e}" for item in mid]
-            if not media_mid
-            else [f"{file_type.s}{m}{file_type.e}" for m in media_mid]
-        )
+        songmid: list[str] = []
+        filename: list[str] = []
+        songtype: list[int] = []
+        for item in file_info:
+            songmid.append(item.mid)
+            final_file_type = item.file_type or file_type
+
+            filename.append(
+                f"{final_file_type.s}{item.mid}{item.mid}{final_file_type.e}"
+                if not item.media_mid
+                else f"{final_file_type.s}{item.media_mid}{final_file_type.e}",
+            )
+            songtype.append(item.song_type or 0)
 
         return self._build_request(
             module=module,
@@ -229,20 +266,25 @@ class SongApi(ApiModule):
                 "uin": self._client.credential.str_musicid if not credential else credential.str_musicid,
                 "filename": filename,
                 "guid": get_guid(),
-                "songmid": mid,
-                "songtype": [0] * len(mid),
+                "songmid": songmid,
+                "songtype": songtype,
                 "ctx": 0,
             },
             response_model=GetSongUrlsResponse,
+            credential=credential,
         )
 
-    def get_detail(self, value: str | int):
+    def get_detail(self, value: int | str):
         """获取歌曲详细信息.
 
         Args:
             value: 歌曲 ID 或 MID.
         """
-        param = {"song_id": value} if isinstance(value, int) else {"song_mid": value}
+        param = (
+            {"song_id": int(value)}
+            if isinstance(value, int) or (isinstance(value, str) and value.isdecimal())
+            else {"song_mid": value}
+        )
         return self._build_request(
             module="music.pf_song_detail_svr",
             method="get_song_detail_yqq",
@@ -264,7 +306,7 @@ class SongApi(ApiModule):
             response_model=GetSimilarSongResponse,
         )
 
-    def get_lables(self, songid: int):
+    def get_labels(self, songid: int):
         """获取歌曲标签.
 
         Args:
@@ -277,17 +319,27 @@ class SongApi(ApiModule):
             response_model=GetSongLabelsResponse,
         )
 
-    def get_related_songlist(self, songid: int):
+    def get_related_songlist(self, songid: int, last: list[int] | None = None):
         """获取歌曲相关歌单.
 
         Args:
             songid: 歌曲 ID.
+            last: 上次请求的相关歌单 ID 列表, 用于换一批歌单.
         """
         return self._build_request(
             module="music.recommend.TrackRelationServer",
             method="GetRelatedPlaylist",
-            param={"songid": songid},
+            param={"songid": songid, "vecPlaylist": last or []},
             response_model=GetRelatedSonglistResponse,
+            refresh_meta=RefreshMeta(
+                strategy=BatchRefreshStrategy(refresh_key="vecPlaylist"),
+                adapter=ResponseAdapter(
+                    has_more_flag="has_more",
+                    cursor=lambda response: (
+                        [playlist.id for playlist in response.songlist] if response.songlist else None
+                    ),
+                ),
+            ),
         )
 
     def get_related_mv(self, songid: int, last_mvid: str | None = None):
@@ -302,15 +354,26 @@ class SongApi(ApiModule):
             method="GetSongRelatedMv",
             param={"songid": str(songid), "songtype": 1, "lastmvid": last_mvid or 0},
             response_model=GetRelatedMvResponse,
+            refresh_meta=RefreshMeta(
+                strategy=BatchRefreshStrategy(refresh_key="lastmvid"),
+                adapter=ResponseAdapter(
+                    has_more_flag="has_more",
+                    cursor=lambda response: response.mv[-1].id if response.mv else None,
+                ),
+            ),
         )
 
-    def get_other_version(self, value: str | int):
+    def get_other_version(self, value: int | str):
         """获取歌曲其他版本.
 
         Args:
             value: 歌曲 ID 或 MID.
         """
-        param = {"songid": value} if isinstance(value, int) else {"songmid": value}
+        param = (
+            {"songid": int(value)}
+            if isinstance(value, int) or (isinstance(value, str) and value.isdecimal())
+            else {"songmid": value}
+        )
         return self._build_request(
             module="music.musichallSong.OtherVersionServer",
             method="GetOtherVersionSongs",
@@ -318,13 +381,17 @@ class SongApi(ApiModule):
             response_model=GetOtherVersionResponse,
         )
 
-    def get_producer(self, value: str | int):
+    def get_producer(self, value: int | str):
         """获取歌曲制作人信息.
 
         Args:
             value: 歌曲 ID 或 MID.
         """
-        param = {"songid": value} if isinstance(value, int) else {"songmid": value}
+        param = (
+            {"songid": int(value)}
+            if isinstance(value, int) or (isinstance(value, str) and value.isdecimal())
+            else {"songmid": value}
+        )
         return self._build_request(
             module="music.sociality.KolWorksTag",
             method="SongProducer",
@@ -345,15 +412,15 @@ class SongApi(ApiModule):
             response_model=GetSheetResponse,
         )
 
-    def get_fav_num(self, songid: list[int]):
+    def get_fav_num(self, song_ids: list[int]):
         """获取歌曲收藏数量原始数据.
 
         Args:
-            songid: 歌曲 ID 列表.
+            song_ids: 歌曲 ID 列表.
         """
         return self._build_request(
             module="music.musicasset.SongFavRead",
             method="GetSongFansNumberById",
-            param={"v_songId": songid},
+            param={"v_songId": song_ids},
             response_model=GetFavNumResponse,
         )

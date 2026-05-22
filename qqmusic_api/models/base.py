@@ -19,7 +19,7 @@ _PHOTO_NEW_SIZE_SEGMENTS: Final[dict[int, str]] = {
 
 
 def _normalize_cover_size(size: CoverSize) -> str:
-    """返回 APK `photo_new` 模板使用的尺寸片段."""
+    """返回 `photo_new` 模板使用的尺寸片段."""
     try:
         return _PHOTO_NEW_SIZE_SEGMENTS[size]
     except KeyError as exc:
@@ -27,7 +27,7 @@ def _normalize_cover_size(size: CoverSize) -> str:
 
 
 def _build_photo_new_cover_url(kind: str, mid: str, size: CoverSize) -> str:
-    """按 APK `photo_new` 规则拼接封面链接."""
+    """按 `photo_new` 规则拼接封面链接."""
     normalized_mid = mid.strip()
     if not normalized_mid:
         return ""
@@ -200,7 +200,7 @@ class SongList(Response):
     picurl: str = Field(default="", validation_alias=AliasChoices("picurl", "cover", "logo", "picUrl"))
     desc: str = Field(default="", validation_alias=AliasChoices("desc", "description"))
     songnum: int = Field(default=0, validation_alias=AliasChoices("songnum", "songNum", "song_cnt"))
-    listennum: int | str = Field(default=0, validation_alias=AliasChoices("listennum", "playCnt", "play_cnt"))
+    listennum: int = Field(default=0, validation_alias=AliasChoices("listennum", "playCnt", "play_cnt"))
 
 
 class Song(Response):
@@ -242,7 +242,7 @@ class Song(Response):
             - [9]: 纯人声/伴奏轨道 (O801).
             - [11]: 黑胶唱片试听 MID (VA00).
             - [13-17]: AI 臻品音效 (钢琴、古筝、葫芦丝、曲笛、八音盒).
-            - [18]: 多轨版媒体 MID.
+            - [18]: 多轨版媒体 MID (O601).
             - [19-22]: AI 臻品音效 (唢呐、手碟、电吉他、架子鼓).
             - [23]: 人声伴奏试听 MID (O802).
             - [24]: 臻品全景声 7.1.4 完整版 MID (Q003).

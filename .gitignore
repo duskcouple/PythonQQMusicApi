@@ -7,12 +7,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 device.json
-
 # C extensions
 *.so
 
 # AI
 .ccb/
+docs/superpowers/
 
 # Distribution / packaging
 .Python

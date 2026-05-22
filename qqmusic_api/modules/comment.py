@@ -1,7 +1,44 @@
 """评论模块."""
 
-from ..models.comment import CommentCountResponse, CommentListResponse, MomentCommentResponse
+from typing import Any, cast
+
+from ..core.pagination import (
+    CursorStrategy,
+    MultiFieldContinuationStrategy,
+    PagerMeta,
+    PaginationParams,
+    ResponseAdapter,
+)
+from ..core.versioning import Platform
+from ..models.comment import AddCommentResponse, CommentCountResponse, CommentListResponse, MomentCommentResponse
+from ..models.request import Credential
 from ._base import ApiModule
+
+
+def _build_comment_pager_meta() -> PagerMeta:
+    """构建评论列表接口使用的 continuation 策略."""
+
+    def build_next_params(
+        params: PaginationParams,
+        response: CommentListResponse,
+        adapter: ResponseAdapter,
+    ) -> PaginationParams | None:
+        next_seq_no = adapter.get_cursor(response)
+        if next_seq_no is None:
+            return None
+        next_params = cast("dict[str, Any]", params.copy())
+        next_params["PageNum"] = next_params["PageNum"] + 1
+        next_params["LastCommentSeqNo"] = next_seq_no
+        return next_params
+
+    return PagerMeta(
+        strategy=MultiFieldContinuationStrategy(build_next_params, context_name="comment_list"),
+        adapter=ResponseAdapter(
+            has_more_flag="has_more",
+            total="total",
+            cursor=lambda response: response.comments[-1].seq_no if response.comments else None,
+        ),
+    )
 
 
 class CommentApi(ApiModule):
@@ -13,6 +50,7 @@ class CommentApi(ApiModule):
         Args:
             biz_id: 歌曲 ID.
         """
+        # 支持 request_list
         data = {
             "request": {
                 "biz_id": str(biz_id),
@@ -57,6 +95,7 @@ class CommentApi(ApiModule):
             "GetHotCommentList",
             params,
             response_model=CommentListResponse,
+            pager_meta=_build_comment_pager_meta(),
         )
 
     def get_new_comments(
@@ -90,6 +129,7 @@ class CommentApi(ApiModule):
             "GetNewCommentList",
             params,
             response_model=CommentListResponse,
+            pager_meta=_build_comment_pager_meta(),
         )
 
     def get_recommend_comments(
@@ -123,6 +163,7 @@ class CommentApi(ApiModule):
             "GetRecCommentList",
             params,
             response_model=CommentListResponse,
+            pager_meta=_build_comment_pager_meta(),
         )
 
     def get_moment_comments(
@@ -151,4 +192,64 @@ class CommentApi(ApiModule):
             "GetSongTsCmList",
             params,
             response_model=MomentCommentResponse,
+            pager_meta=PagerMeta(
+                strategy=CursorStrategy(cursor_key="LastPos"),
+                adapter=ResponseAdapter(has_more_flag="has_more", cursor="next_pos"),
+            ),
         )
+
+    def add_comment(
+        self,
+        biz_id: int,
+        content: str,
+        reply_cmt_id: str | None = None,
+        credential: Credential | None = None,
+    ):
+        """添加评论.
+
+        Args:
+            biz_id: 歌曲 ID.
+            content: 评论内容.
+            reply_cmt_id: 回复的评论 ID.
+            credential: 登录凭据.
+        """
+        self._require_login(credential)
+        return self._build_request(
+            "music.globalComment.CommentWriteServer",
+            "AddComment",
+            {
+                "Content": content,
+                "BizType": 1,
+                "BizId": str(biz_id),
+                "RepliedCmId": reply_cmt_id,
+            },
+            credential=credential,
+            platform=Platform.ANDROID,
+            response_model=AddCommentResponse,
+        )
+
+    async def delete_comment(
+        self,
+        cm_id: str,
+        credential: Credential | None = None,
+    ) -> bool:
+        """删除评论.
+
+        Args:
+            cm_id: 评论 ID.
+            credential: 登录凭据.
+
+        Returns:
+            是否删除成功,评论不存在也为 True.
+        """
+        self._require_login(credential)
+        data = await self._build_request(
+            "music.globalComment.CommentWriteServer",
+            "DelComment",
+            {
+                "CommentId": cm_id,
+            },
+            platform=Platform.ANDROID,
+            credential=credential,
+        )
+        return data.get("SubCode", 0) == 0

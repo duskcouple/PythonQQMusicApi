@@ -53,6 +53,10 @@ class CommonParams(BaseModel):
     format: str | None = Field(default=None)
     in_charset: str | None = Field(default=None, alias="inCharset")
     out_charset: str | None = Field(default=None, alias="outCharset")
+    # [Web] 通知开关
+    notice: int | None = Field(default=None)
+    # [Web] 新设备码开关
+    need_new_code: int | None = Field(default=None)
 
 
 class Credential(BaseModel):
@@ -95,7 +99,7 @@ class Credential(BaseModel):
         if not isinstance(data, dict):
             return data
 
-        if data.get("loginType") or data.get("login_type"):
+        if "loginType" in data or "login_type" in data:
             return data
 
         musickey = data.get("musickey", "")
@@ -116,6 +120,7 @@ class RequestItem(TypedDict):
     module: str
     method: str
     param: dict[str, Any] | dict[int, Any]
+    preserve_bool: bool
 
 
 class JceRequestItem(Struct):
@@ -129,7 +134,7 @@ class JceRequestItem(Struct):
 class JceRequest(Struct):
     """JCE 请求体."""
 
-    comm: dict[str, Any] = field(tag=0)
+    comm: dict[str, str] = field(tag=0)
     data: dict[str, JceRequestItem] = field(tag=1)
 
 

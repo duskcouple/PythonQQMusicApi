@@ -2,31 +2,39 @@
 
 from .core.client import Client
 from .core.exceptions import (
-    ApiError,
+    ApiDataError,
+    ApiException,
+    BaseApiException,
+    CgiApiException,
+    CredentialExpiredError,
+    CredentialInvalidError,
+    CredentialRefreshError,
+    GlobalApiError,
     HTTPError,
     LoginError,
-    LoginExpiredError,
     NetworkError,
-    NotLoginError,
     RatelimitedError,
-    SignInvalidError,
 )
 from .core.versioning import Platform
 from .models.request import Credential
 
-__version__ = "0.5.0"
+__version__ = "0.6.1"
 
 __all__ = [
-    "ApiError",
+    "ApiDataError",
+    "ApiException",
+    "BaseApiException",
+    "CgiApiException",
     "Client",
     "Credential",
+    "CredentialExpiredError",
+    "CredentialInvalidError",
+    "CredentialRefreshError",
+    "GlobalApiError",
     "HTTPError",
     "LoginError",
-    "LoginExpiredError",
     "NetworkError",
-    "NotLoginError",
     "Platform",
     "RatelimitedError",
-    "SignInvalidError",
     "__version__",
 ]
