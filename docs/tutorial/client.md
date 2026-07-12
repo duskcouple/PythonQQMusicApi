@@ -76,10 +76,6 @@ client = Client(credential=credential)
 
 默认的请求平台是 `android`，如果需要可以在初始化时覆盖：
 
-!!! note
-
-    部分 API 的请求平台是固定的，无法覆盖。
-
 ```python
 import asyncio
 
@@ -91,6 +87,29 @@ async def main():
         ...
 
 
-asyncio.run(_main())
-
+asyncio.run(main())
 ```
+
+支持的平台：
+
+| 平台 | `Platform` 值 | 说明 |
+| ------ | -------------- | ------ |
+| Android | `Platform.ANDROID` | 默认，大部分接口使用 |
+| Desktop | `Platform.DESKTOP` | QQ 音乐桌面端 |
+| Web | `Platform.WEB` | QQ 音乐网页端 |
+
+!!! note
+
+    部分接口的请求平台是固定的，传入 `platform` 参数不会生效。例如 `get_detail` 固定使用 Web 平台，`send_authcode` 固定使用 Android 平台。
+
+## 设备信息
+
+可通过 `device_path` 参数指定设备信息文件的路径进行持久化存储：
+
+```python
+client = Client(device_path="device.json")
+```
+
+不传 `device_path` 则仅在内存维护设备状态，重启后丢失。
+
+`Client.credential` 更改时设备信息保持不变。

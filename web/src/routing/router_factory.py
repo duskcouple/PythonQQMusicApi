@@ -2,6 +2,7 @@
 
 import inspect
 import re
+from collections.abc import Callable
 from enum import IntEnum
 from typing import Annotated, Any, get_args, get_origin
 
@@ -69,6 +70,7 @@ def include_routes(app: FastAPI, routes: tuple[WebRoute, ...]) -> None:
         openapi_extra = (
             {"security": [COOKIE_SECURITY_REQUIREMENT]} if route.auth is AuthPolicy.COOKIE_OR_DEFAULT else None
         )
+        actual_response_model = type(None) if route.response_model is bool else route.response_model
         app.add_api_route(
             route.path,
             endpoint,
@@ -76,12 +78,13 @@ def include_routes(app: FastAPI, routes: tuple[WebRoute, ...]) -> None:
             tags=list(route.tags or (route.module,)),
             summary=summary,
             description=description,
-            response_model=ApiResponse[route.response_model],
+            response_model=ApiResponse[actual_response_model],
+            response_model_by_alias=False,
             openapi_extra=openapi_extra,
         )
 
 
-def make_endpoint(route: WebRoute):
+def make_endpoint(route: WebRoute) -> tuple[Callable[..., Any], MethodDocs]:
     """为类型化 Web 路由构造 FastAPI 端点."""
     doc_source = route.adapter or _resolve_method(route)
     docs = load_method_docs(doc_source) if doc_source is not None else MethodDocs(summary="", description="", params={})
@@ -126,6 +129,9 @@ def make_endpoint(route: WebRoute):
     return endpoint, docs
 
 
+_SDK_SIGNATURE_CACHE: dict[Any, inspect.Signature] = {}
+
+
 def _resolve_route_params(route: WebRoute) -> tuple[ParamOverride, ...]:
     """按 SDK 签名解析路由参数并应用覆盖声明."""
     if route.adapter is not None:
@@ -133,7 +139,10 @@ def _resolve_route_params(route: WebRoute) -> tuple[ParamOverride, ...]:
     method = _resolve_method(route)
     if method is None:
         return route.param_overrides
-    signature = inspect.signature(method)
+
+    if method not in _SDK_SIGNATURE_CACHE:
+        _SDK_SIGNATURE_CACHE[method] = inspect.signature(method)
+    signature = _SDK_SIGNATURE_CACHE[method]
     template_names = set(re.findall(r"{([^{}]+)}", route.path))
     overrides = {param.name: param for param in route.param_overrides}
     resolved: list[ParamOverride] = []

@@ -4,6 +4,7 @@ import binascii
 import hashlib
 import random
 import string
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar
@@ -43,6 +44,7 @@ class OSVersion:
     sdk: int = 29
 
 
+# TODO: 支持设备信息随机化生成,并优化生成
 @dataclass
 class Device:
     """设备相关信息."""
@@ -85,6 +87,12 @@ class Device:
     vendor_os_name: str = "qmapi"
     qimei: str | None = None
     qimei36: str | None = None
+    qimei_save_time: int | None = None
+    session_uid: str | None = None
+    session_sid: str | None = None
+    session_vkey: str | None = None
+    session_save_time: int | None = None
+    open_udid: str = field(default_factory=lambda: uuid4().hex)
 
 
 class DeviceManager:
@@ -188,4 +196,5 @@ class DeviceManager:
         device = await self.get_device()
         device.qimei = q16
         device.qimei36 = q36
+        device.qimei_save_time = int(time.time())
         await self.save_device()

@@ -1,11 +1,14 @@
 """Web 层配置管理."""
 
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, TomlConfigSettingsSource
 
 from qqmusic_api import Credential
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
 class LogConfig(BaseModel):
@@ -15,11 +18,11 @@ class LogConfig(BaseModel):
     level: Annotated[Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], Field(description="日志级别")] = "INFO"
     file_path: str = Field(default="web/data/logs/app.log", description="日志文件路径 (当 mode 为 file 或 both 时使用)")
     console_format: str = Field(
-        default="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{name}</cyan> | <level>{message}</level>",
+        default="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level:<8}</level> | <cyan>{extra[logger_name]:<15}</cyan> | <level>{message}</level>",
         description="控制台日志格式",
     )
     file_format: str = Field(
-        default="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {name} | {message}",
+        default="{time:YYYY-MM-DD HH:mm:ss} | {level:<8} | {extra[logger_name]:<15} | {message}",
         description="文件日志格式",
     )
     max_bytes: int = Field(default=10485760, ge=1, description="单个日志文件最大字节数 (10MB)")
@@ -171,13 +174,19 @@ class AccountConfig(BaseModel):
         return Credential.model_validate(data)
 
 
+class ClientConfig(BaseModel):
+    """SDK Client 基础配置."""
+
+    device_path: str = Field(default="web/data/device.json", description="设备信息文件路径")
+
+
 class Settings(BaseSettings):
     """Web 服务全局配置."""
 
     model_config = SettingsConfigDict(
         env_prefix="QQMUSIC_",
-        env_file=".env",
-        toml_file="web/config.toml",
+        env_file=str(PROJECT_ROOT / ".env"),
+        toml_file=str(PROJECT_ROOT / "web" / "config.toml"),
         env_nested_delimiter="_",
         extra="ignore",
     )
@@ -187,6 +196,7 @@ class Settings(BaseSettings):
     cache: CacheConfig = CacheConfig()
     security: SecurityConfig = SecurityConfig()
     credential: CredentialConfig = CredentialConfig()
+    client: ClientConfig = ClientConfig()
 
     @classmethod
     def settings_customise_sources(
@@ -205,6 +215,17 @@ class Settings(BaseSettings):
             TomlConfigSettingsSource(settings_cls),
             file_secret_settings,
         )
+
+    @model_validator(mode="after")
+    def _resolve_paths(self) -> "Settings":
+        """将相对路径统一解析为基于项目根目录的绝对路径."""
+        if not Path(self.logging.file_path).is_absolute():
+            self.logging.file_path = str(PROJECT_ROOT / self.logging.file_path)
+        if not Path(self.credential.store.path).is_absolute():
+            self.credential.store.path = str(PROJECT_ROOT / self.credential.store.path)
+        if not Path(self.client.device_path).is_absolute():
+            self.client.device_path = str(PROJECT_ROOT / self.client.device_path)
+        return self
 
 
 settings = Settings()

@@ -207,13 +207,14 @@ class CommentApi(ApiModule):
     ):
         """添加评论.
 
+        固定使用 Android 平台.
+
         Args:
             biz_id: 歌曲 ID.
             content: 评论内容.
             reply_cmt_id: 回复的评论 ID.
             credential: 登录凭据.
         """
-        self._require_login(credential)
         return self._build_request(
             "music.globalComment.CommentWriteServer",
             "AddComment",
@@ -226,6 +227,7 @@ class CommentApi(ApiModule):
             credential=credential,
             platform=Platform.ANDROID,
             response_model=AddCommentResponse,
+            require_login=True,
         )
 
     async def delete_comment(
@@ -235,6 +237,8 @@ class CommentApi(ApiModule):
     ) -> bool:
         """删除评论.
 
+        固定使用 Android 平台.
+
         Args:
             cm_id: 评论 ID.
             credential: 登录凭据.
@@ -242,7 +246,6 @@ class CommentApi(ApiModule):
         Returns:
             是否删除成功,评论不存在也为 True.
         """
-        self._require_login(credential)
         data = await self._build_request(
             "music.globalComment.CommentWriteServer",
             "DelComment",
@@ -251,5 +254,6 @@ class CommentApi(ApiModule):
             },
             platform=Platform.ANDROID,
             credential=credential,
+            require_login=True,
         )
         return data.get("SubCode", 0) == 0

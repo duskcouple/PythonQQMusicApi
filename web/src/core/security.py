@@ -3,12 +3,13 @@
 import asyncio
 import math
 import time
-from collections.abc import AsyncIterator, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
 from ipaddress import ip_address, ip_network
-from typing import Any, Literal, cast
+from typing import Literal
 
 from fastapi import FastAPI, Request
+from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
@@ -133,7 +134,11 @@ class RateLimitResult:
 
 
 class InMemoryRateLimiter:
-    """固定窗口 IP 限流器."""
+    """固定窗口 IP 限流器.
+
+    Note:
+        进程内内存实现, 多 worker 模式下各 worker 独立计数.
+    """
 
     def __init__(
         self,
@@ -169,7 +174,9 @@ class InMemoryRateLimiter:
         key = (client_ip, window)
         current = self._counters.get(key, 0) + 1
         self._counters[key] = current
-        self._discard_stale_windows(window)
+
+        stale_key = (client_ip, window - 1)
+        self._counters.pop(stale_key, None)
 
         remaining = max(0, self._capacity - current)
         return RateLimitResult(
@@ -180,14 +187,13 @@ class InMemoryRateLimiter:
             retry_after=retry_after,
         )
 
-    def _discard_stale_windows(self, current_window: int) -> None:
-        stale_keys = [key for key in self._counters if key[1] < current_window]
-        for key in stale_keys:
-            del self._counters[key]
-
 
 class InMemoryConcurrencyLimiter:
-    """全局并发请求限制器."""
+    """全局并发请求限制器.
+
+    Note:
+        进程内内存实现, 多 worker 模式下各 worker 独立计数.
+    """
 
     def __init__(self, limit: int) -> None:
         """初始化限制器."""
@@ -210,21 +216,18 @@ class InMemoryConcurrencyLimiter:
                 self._active -= 1
 
 
-async def _release_after_body(
-    body_iterator: AsyncIterator[bytes],
-    limiter: InMemoryConcurrencyLimiter,
-) -> AsyncIterator[bytes]:
-    """在响应体发送结束后释放并发名额."""
-    try:
-        async for chunk in body_iterator:
-            yield chunk
-    finally:
-        await limiter.release()
+def _is_streaming(response: Response) -> bool:
+    """判断响应是否为流式响应."""
+    return hasattr(response, "body_iterator") and not isinstance(
+        getattr(response, "body_iterator", None), (bytes, bytearray)
+    )
 
 
 async def apply_security_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
     """执行客户端 IP 解析、访问控制与限流."""
     services = get_security_services(request)
+    if services is None:
+        return await call_next(request)
     config: SecurityConfig = services.config
     if not config.enabled:
         return await call_next(request)
@@ -261,8 +264,21 @@ async def apply_security_middleware(request: Request, call_next: RequestResponse
     except Exception:
         await concurrency_limiter.release()
         raise
-    response_body = cast("Any", response).body_iterator
-    cast("Any", response).body_iterator = _release_after_body(response_body, concurrency_limiter)
+
+    if _is_streaming(response):
+        task = BackgroundTask(concurrency_limiter.release)
+        if response.background is None:
+            response.background = task
+        elif isinstance(response.background, BackgroundTasks):
+            response.background.add_task(concurrency_limiter.release)
+        else:
+            tasks = BackgroundTasks()
+            tasks.tasks.append(response.background)
+            tasks.add_task(concurrency_limiter.release)
+            response.background = tasks
+    else:
+        await concurrency_limiter.release()
+
     return response
 
 

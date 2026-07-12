@@ -11,17 +11,32 @@ cd QQMusicApi
 
 ### 安装 Web 依赖
 
+#### 方式 A
+
 ```bash
-uv sync --group web
+uv sync --group web --no-dev
+```
+
+#### 方式 B
+
+```bash
+pip install -r web/requirements.txt
 ```
 
 ### 启动服务
 
 ```bash
-uv run web/run.py
+uv run --no-sync web/run.py
 ```
 
-服务启动后，访问 [http://localhost:8080/docs](http://localhost:8080/docs) 查看自动生成的 API 文档。
+服务启动后，可通过以下地址查看 API 文档:
+
+|                 地址                 | 说明               |
+|:------------------------------------:|--------------------|
+|    `http://localhost:8080/swagger`   | Swagger UI         |
+|     `http://localhost:8080/redoc`    | ReDo               |
+|     `http://localhost:8080/docs`     | Stoplight Elements |
+| `http://localhost:8080/openapi.json` | OpenAPI            |
 
 ### Docker 部署
 
@@ -30,15 +45,36 @@ uv run web/run.py
 docker build -t qqmusic-api-web -f web/Dockerfile .
 
 # 运行容器
-docker run -p 8080:8080 \
+docker run -d -p 8080:8080 --name qqmusic-api-web \
   -v ./web/data:/app/web/data \
+  -v ./web/accounts.toml:/app/web/accounts.toml:ro \
+  -v ./web/config.toml:/app/web/config.toml:ro \
   qqmusic-api-web
 ```
 
 使用 docker-compose:
 
 ```bash
+# 首次使用请复制示例文件并编辑:
+cp web/docker-compose.example.yml web/docker-compose.yml
+# 然后启动:
 docker compose -f web/docker-compose.yml up -d
+```
+
+### wslc 部署
+
+[`wslc`](https://learn.microsoft.com/zh-cn/windows/wsl/) 是 Windows 自带的 WSL 容器管理工具。
+
+```bash
+# 构建镜像
+wslc build -t qqmusic-api-web -f web/Dockerfile .
+
+# 运行容器
+wslc run -d -p 8080:8080 --name qqmusic-api-web \
+  -v ./web/data:/app/web/data \
+  -v ./web/accounts.toml:/app/web/accounts.toml:ro \
+  -v ./web/config.toml:/app/web/config.toml:ro \
+  qqmusic-api-web
 ```
 
 挂载说明:
@@ -99,3 +135,7 @@ R(
 ## 特殊路由适配器
 
 复杂路由在 `web/src/modules/` 中保留请求/响应模型与适配函数，例如歌曲文件链接、二维码登录、歌单写操作。适配器接收 `RouteContext`，从 `context.params` 读取已校验参数，并调用 SDK 方法。所有注册、OpenAPI 元数据、认证与缓存策略仍由 `web/src/routes/` 统一声明。
+
+## 注意事项
+
+* **限流与并发控制**在进程内存中实现，当 `workers > 1` 时每个 worker 独立计数，实际允许的请求速率会乘以 worker 数量。如需精确限流，请保持 `workers = 1` 或使用外部方案（如 Nginx、Redis）。

@@ -10,12 +10,16 @@ from typing import Any
 from uuid import uuid4
 
 import anyio
-from niquests.exceptions import HTTPError, ReadTimeout
+from niquests.exceptions import HTTPError, ReadTimeout, RequestException
 
 from ..core import (
     ApiDataError,
     CredentialRefreshError,
+    LoginAccountRestrictedError,
+    LoginAuthExpiredError,
+    LoginDeviceLimitError,
     LoginError,
+    LoginRateLimitError,
     NetworkError,
     Platform,
 )
@@ -43,6 +47,7 @@ _WX_STATUS_RE = re.compile(r"window\.wx_errcode=(\d+);window\.wx_code='([^']*)'"
 _ERROR_CODE = 1000, 104401, 104400, 20261, 20271, 20272, 20274, 20277, 20278, 20279, 20450, 104604
 
 
+# TODO: 登录和刷新时设置 `deviceName`
 class LoginApi(ApiModule):
     """登录相关的 API."""
 
@@ -53,7 +58,7 @@ class LoginApi(ApiModule):
             case 0:
                 return data
             case 1000 | 104401 | 104400:
-                raise LoginError(message="登录鉴权参数无效或已过期", code=code, data=data)
+                raise LoginAuthExpiredError(code=code, data=data)
             case 20261:
                 raise LoginError(message="登录参数错误", code=code, data=data)
             case 20271:
@@ -63,13 +68,13 @@ class LoginApi(ApiModule):
             case 20274:
                 raise LoginError(message="账号绑定缺失", code=code, data=data)
             case 20277 | 20278:
-                raise LoginError(message="账号受限", code=code, data=data)
+                raise LoginAccountRestrictedError(code=code, data=data)
             case 20279:
-                raise LoginError(message="登录设备超限", code=code, data=data)
+                raise LoginDeviceLimitError(code=code, data=data)
             case 20450:
-                raise LoginError(message="账号已被封禁", code=code, data=data)
+                raise LoginAccountRestrictedError(message="账号已被封禁", code=code, data=data)
             case 104604:
-                raise LoginError(message="操作过于频繁", code=code, data=data)
+                raise LoginRateLimitError(code=code, data=data)
             case _:
                 raise LoginError(code=code, data=data)
 
@@ -83,6 +88,27 @@ class LoginApi(ApiModule):
             bool: 是否已过期.
         """
         target = credential or self._client.credential
+        if self._client.platform == Platform.WEB:
+            resp = await self._client.request(
+                "GET",
+                "https://c6.y.qq.com/rsc/fcgi-bin/fcg_get_profile_homepage.fcg",
+                credential=target,
+                params={
+                    "g_tk": hash33(target.musickey, 5381),
+                    "format": "json",
+                    "inCharset": "utf-8",
+                    "outCharset": "utf-8",
+                    "notice": 0,
+                    "cid": 205360838,
+                    "needNewCode": 0,
+                    "loginUin": target.musicid,
+                    "hostUin": 0,
+                    "userid": target.musicid,
+                    "reqfrom": "1",
+                },
+            )
+            return resp.json().get("code") != 0
+
         data = await self._build_request(
             module="music.UserInfo.userInfoServer",
             method="GetLoginUserInfo",
@@ -104,8 +130,7 @@ class LoginApi(ApiModule):
         Returns:
             Credential: 刷新后的新凭证对象.
         """
-        target = credential or self._client.credential
-        self._require_login(target)
+        target = self._require_login(credential)
         match target.login_type:
             case 1:
                 param = {
@@ -156,6 +181,19 @@ class LoginApi(ApiModule):
         except LoginError as exc:
             raise CredentialRefreshError(message=exc.message, code=exc.code, data=exc.data) from exc
 
+    async def logout(self, credential: Credential | None = None) -> None:
+        """登出当前账号."""
+        await self._build_request(
+            module="music.login.LoginServer",
+            method="Logout",
+            param={},
+            credential=credential,
+            allow_error_codes=_ERROR_CODE,
+            require_login=True,
+        )
+        if credential is None:
+            self._client.credential = Credential()
+
     async def get_qrcode(self, login_type: QRLoginType) -> QR:
         """获取指定类型的登录二维码.
 
@@ -179,6 +217,13 @@ class LoginApi(ApiModule):
 
         Returns:
             QRLoginResult: 包含当前状态和凭证 (仅在 DONE 时包含) 的结果对象.
+
+        Raises:
+            LoginAuthExpiredError: 登录鉴权参数无效或已过期 (code=1000/104401/104400).
+            LoginDeviceLimitError: 登录设备数量超限 (code=20279).
+            LoginAccountRestrictedError: 账号受限或已被封禁 (code=20277/20278/20450).
+            LoginRateLimitError: 操作过于频繁 (code=104604).
+            LoginError: 其他登录业务异常.
         """
         if qrcode.qr_type == QRLoginType.WX:
             return await self._check_wx_qr(qrcode)
@@ -289,6 +334,8 @@ class LoginApi(ApiModule):
     ) -> PhoneAuthCodeResult:
         """发送手机验证码.
 
+        固定使用 Android 平台.
+
         Args:
             phone: 手机号 (int) 或加密手机号 (str).
             country_code: 国家代码, 默认为 86 (中国).
@@ -329,12 +376,21 @@ class LoginApi(ApiModule):
     ) -> Credential:
         """使用手机验证码鉴权.
 
+        固定使用 Android 平台.
+
         Args:
             phone: 手机号 (int) 或加密手机号 (str).
             auth_code: 验证码.
 
         Returns:
             Credential: 登录成功后的凭证对象.
+
+        Raises:
+            LoginAuthExpiredError: 登录鉴权参数无效或已过期 (code=1000/104401/104400).
+            LoginDeviceLimitError: 登录设备数量超限 (code=20279).
+            LoginAccountRestrictedError: 账号受限或已被封禁 (code=20277/20278/20450).
+            LoginRateLimitError: 操作过于频繁 (code=104604).
+            LoginError: 其他登录业务异常.
         """
         param: dict[str, str | int] = {"code": auth_code, "loginMode": 1}
         if isinstance(phone, str):
@@ -501,6 +557,8 @@ class LoginApi(ApiModule):
             )
         except ReadTimeout:
             return QRLoginResult(event=QRCodeLoginEvents.SCAN)
+        except RequestException as exc:
+            raise NetworkError(str(exc)) from exc
 
         match = _WX_STATUS_RE.search(response.text or "")
         if not match:

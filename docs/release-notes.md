@@ -1,4 +1,208 @@
 
+## [[0.6.9](https://github.com/L-1124/QQMusicApi/compare/v0.6.8..v0.6.9)] - 2026-07-12
+
+### Bug 修复
+
+* **(web)** 修复凭据刷新异常捕获过宽与 ETag 缓存机制形同虚设的问题 ([305a063](https://github.com/L-1124/QQMusicApi/commit/305a0637f6261b3de3710c504dc8b22ec0ec52b8)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 修复配置账号由于重置逻辑缺陷被永久标记失效与流式响应并发槽位泄露 ([56f3034](https://github.com/L-1124/QQMusicApi/commit/56f30347a5182380e14febb1b6b1a80debc74ea3)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 避免将 credential 对象盲目混入参数导致 SDK 签名报错 ([fc8b32c](https://github.com/L-1124/QQMusicApi/commit/fc8b32ca1d8d20f16c52f37272798b3688f2848b)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 修复 KeyedLock finalizer 泄漏与 Redis 序列化 Pydantic 模型问题 ([5440a5e](https://github.com/L-1124/QQMusicApi/commit/5440a5e83b1d110d29f4e1b2eab74f5a8f509847)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 修正 songlist 创建与删除路由的 HTTP 方法 ([43c9ce6](https://github.com/L-1124/QQMusicApi/commit/43c9ce6fd0779895afe70a5c7062d7ead0d69957)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 修复凭据刷新锁与限流器的内存泄漏 ([c5ed6a3](https://github.com/L-1124/QQMusicApi/commit/c5ed6a315e7de680b60b63199350fca276781a46)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 修复 search 路由声明中 Any 导致的类型检查错误 ([d1aea06](https://github.com/L-1124/QQMusicApi/commit/d1aea0631aeee866cc8b09d1d6a086b07f24e7a9)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 修复返回 bool 类型时生成的文档和数据格式问题 ([af8550d](https://github.com/L-1124/QQMusicApi/commit/af8550d08038dc8f66be39e28c9d3a905abf7e63)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(web)** 添加 UserApi 的DisLike和favor api ([b1aa67d](https://github.com/L-1124/QQMusicApi/commit/b1aa67d5e6608d722b337c53274b4d91963a008d)) by [@L-1124](https://github.com/L-1124)
+* 新增新碟上架 / MV 分类 / 收藏专辑 / 收藏歌曲接口与推荐新歌地区筛选 ([520c92b](https://github.com/L-1124/QQMusicApi/commit/520c92bd4d3546a20358c0a6daf47f67af8813d8)) by [@jinzhongjia](https://github.com/jinzhongjia) in [#284](https://github.com/L-1124/QQMusicApi/pull/284)
+
+### 功能重构
+
+* **(web)** 收敛配置修改与硬编码路径到配置层 ([0e5950c](https://github.com/L-1124/QQMusicApi/commit/0e5950c9fec28783f081c7d37754de130dcd1950)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 抽取统一的 refresh_and_store 方法消除重复，并补全重试刷新失败时的无效标记逻辑 ([a4a0729](https://github.com/L-1124/QQMusicApi/commit/a4a072984f2dce212885bc240640c9a859d9b0ed)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 移除 songlist 的动态 getattr 分发以恢复类型安全与修复潜在凭据 KeyError ([c1030e1](https://github.com/L-1124/QQMusicApi/commit/c1030e1d867eed8e42957dbf797f548a754796e5)) by [@L-1124](https://github.com/L-1124)
+
+### 性能优化
+
+* **(web)** 启用 SQLite WAL 模式并延迟反序列化随机凭据 ([7d01994](https://github.com/L-1124/QQMusicApi/commit/7d019942ae3812fe286d90eb668dc52318ccabe7)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 缓存路由参数解析以避免重复的 SDK 签名内省 ([61cc5a5](https://github.com/L-1124/QQMusicApi/commit/61cc5a5494afb750149d6689e252cb429e9d109d)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 抽取 app 为会话级 fixture 以大幅降低测试耗时 ([6d13b50](https://github.com/L-1124/QQMusicApi/commit/6d13b50ad42c1bf8f56c596a2fd810cadc23208d)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 移除缓存层与响应中不必要的双重序列化 ([bbc865c](https://github.com/L-1124/QQMusicApi/commit/bbc865c8aa52da6a027064510e94c8fcf8d5ab76)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @jinzhongjia [#284](https://github.com/L-1124/QQMusicApi/pull/284)
+* @github-actions[bot]
+
+## [[0.6.8](https://github.com/L-1124/QQMusicApi/compare/v0.6.7..v0.6.8)] - 2026-07-01
+
+### Bug 修复
+
+* **(web)** 禁用 FastAPI 默认按别名响应，使 JSON 输出与 Python 原生变量名保持一致 ([32459a5](https://github.com/L-1124/QQMusicApi/commit/32459a54c03d8a0a738f1917f9eb19fc6f9ac4ef)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(core)** 新增 SignatureRequiredError 错误码 2000 处理 ([a73313a](https://github.com/L-1124/QQMusicApi/commit/a73313a91549a156358ad9311d0e20d7401b861b)) by [@L-1124](https://github.com/L-1124)
+* **(core)** _ensure_session 添加 24h 保活机制 ([2290a32](https://github.com/L-1124/QQMusicApi/commit/2290a32304bcd9052365f60c67f2d4f6b00e4d7e)) by [@L-1124](https://github.com/L-1124)
+* **(helper)** 新增辅助功能接口 ([eb0c40c](https://github.com/L-1124/QQMusicApi/commit/eb0c40c1461826955a1eb005afb723438730142a)) by [@L-1124](https://github.com/L-1124)
+* **(login)** 支持登出API ([73f2a7e](https://github.com/L-1124/QQMusicApi/commit/73f2a7ee9ad1d48cbec2d6aa9dbf844f44b573c2)) by [@L-1124](https://github.com/L-1124)
+* **(lyric)** [**breaking**] 彻底移除 crypt 字段，隐式处理加密状态 ([80edc40](https://github.com/L-1124/QQMusicApi/commit/80edc40e41331f6b5c11146d5daf6eccf344181f)) by [@L-1124](https://github.com/L-1124)
+* **(lyric)** [**breaking**] 移除 decrypt 方法，改为默认解密 ([24949c4](https://github.com/L-1124/QQMusicApi/commit/24949c4df8c63b02b35dd69c30e2a8f40d234dfb)) by [@L-1124](https://github.com/L-1124)
+* **(song)** 添加特殊歌曲文件类型 TRY_OGG_640 ([fef7e8c](https://github.com/L-1124/QQMusicApi/commit/fef7e8ceb220aa477ea7d8498f8ebfd240f72cc6)) by [@L-1124](https://github.com/L-1124)
+* **(user)** 新增收藏/取消收藏歌单 API ([7865434](https://github.com/L-1124/QQMusicApi/commit/7865434782dd205815222fe716f52bac9f84aeec)) by [@jinzhongjia](https://github.com/jinzhongjia) in [#281](https://github.com/L-1124/QQMusicApi/pull/281)
+* **(user)** 新增 FeedbackBlack 黑名单 API ([4340554](https://github.com/L-1124/QQMusicApi/commit/4340554aaaafaef175eead7ebced596538bc65e2)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 启用 FastAPI 内置 Swagger UI 和 ReDoc，更新文档地址说明 ([a3245ad](https://github.com/L-1124/QQMusicApi/commit/a3245ad3d3863c7f7eec94352d169a32ba4478c6)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 重构 Dockerfile 为多阶段构建，修复非 root 用户 uv 缓存权限问题 ([00e16a3](https://github.com/L-1124/QQMusicApi/commit/00e16a37b62e989de37232e8af7e77167a28e823)) by [@L-1124](https://github.com/L-1124)
+
+### 功能重构
+
+* **(core)** 移除 _session_cache 冗余缓存，简化会话验证逻辑 ([0b12b9d](https://github.com/L-1124/QQMusicApi/commit/0b12b9d041a8be24ad84d60bd2ceaed76b81fe92)) by [@L-1124](https://github.com/L-1124)
+* **(models)** [**breaking**] 将所有模型中的 alias 统一替换为 validation_alias，隔离序列化字段名 ([c611b91](https://github.com/L-1124/QQMusicApi/commit/c611b91d607d36327662a80d0e126a6958b21bd5)) by [@L-1124](https://github.com/L-1124)
+* **(modules)** 移除冗余的 _require_login 调用，统一使用 require_login 参数 ([1a666f4](https://github.com/L-1124/QQMusicApi/commit/1a666f45ae968c235066c07e8b3e82096c3fc668)) by [@L-1124](https://github.com/L-1124)
+* **(modules)** 将 _require_login 收敛到 _build_request 的 require_login 参数中 ([d1a92ca](https://github.com/L-1124/QQMusicApi/commit/d1a92ca07d5a98f3f443453e5fc77b8f8c8dc44e)) by [@L-1124](https://github.com/L-1124)
+
+### 文档更新
+
+* **(coding)** 更新需登录接口的编码规范，使用 require_login 参数替代 _require_login ([9e56215](https://github.com/L-1124/QQMusicApi/commit/9e562152ec8039b3045ae6c51006401c93b36a36)) by [@L-1124](https://github.com/L-1124)
+* **(dislike)** 更新不喜欢列表项和响应数据的文档说明 ([5dbf711](https://github.com/L-1124/QQMusicApi/commit/5dbf711e46a69f99940f048504446b9e074fd21f)) by [@L-1124](https://github.com/L-1124)
+* **(login)** 更新二维码和手机验证码登录状态的文档注释 ([f31d4d0](https://github.com/L-1124/QQMusicApi/commit/f31d4d0132cb61a9935ebea92657fcfa6591926c)) by [@L-1124](https://github.com/L-1124)
+* **(readme)** 添加 DeepWiki 相关链接 ([fcea758](https://github.com/L-1124/QQMusicApi/commit/fcea758b80a824cb513a8bdfc8b247da786f5a1e)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @jinzhongjia [#281](https://github.com/L-1124/QQMusicApi/pull/281)
+* @github-actions[bot]
+
+## [[0.6.7](https://github.com/L-1124/QQMusicApi/compare/v0.6.6..v0.6.7)] - 2026-06-17
+
+### 功能更新
+
+* **(login)** 新增登录异常子类和错误码映射 ([0ef9645](https://github.com/L-1124/QQMusicApi/commit/0ef9645806c9778cfa6214dd60fa56644568c276)) by [@jinzhongjia](https://github.com/jinzhongjia) in [#269](https://github.com/L-1124/QQMusicApi/pull/269)
+* **(qimei)** 增加 24 小时过期重新获取逻辑 ([05aed29](https://github.com/L-1124/QQMusicApi/commit/05aed29096dff31b7d0cbb26ccc66ec50da38bdc)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 添加 has_sheet 路由 ([9e7a143](https://github.com/L-1124/QQMusicApi/commit/9e7a1439ff597ae43a4ef99d88ec08ee32889b9a)) by [@L-1124](https://github.com/L-1124)
+
+### 文档更新
+
+* **(coding)** 重写 API 编写指南，补充开发细节 ([9db46de](https://github.com/L-1124/QQMusicApi/commit/9db46def73ec6c2d9826c4a15bc2eb7ba9ed0f37)) by [@L-1124](https://github.com/L-1124)
+* 为固定请求平台的 API 补充 docstring 说明 ([aba712e](https://github.com/L-1124/QQMusicApi/commit/aba712e56a7485b4184941480c05f370cd53c548)) by [@L-1124](https://github.com/L-1124)
+* 完善快速开始文档并新增多篇核心教程 ([d6143cd](https://github.com/L-1124/QQMusicApi/commit/d6143cdc047ebeb4963b061680a21103ba3d58d4)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @jinzhongjia [#269](https://github.com/L-1124/QQMusicApi/pull/269)
+* @github-actions[bot]
+* @renovate[bot]
+
+## [[0.6.6](https://github.com/L-1124/QQMusicApi/compare/v0.6.5..v0.6.6)] - 2026-06-13
+
+### Bug 修复
+
+* **(song)** 修复 get_sheet 获取无曲谱歌曲时触发异常的问题 ([f47a643](https://github.com/L-1124/QQMusicApi/commit/f47a643e956ef52a532b0017ea8365cb2537593d)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 修复评论适配器与凭证锁内存泄漏，优化基础设施 ([66a6cc4](https://github.com/L-1124/QQMusicApi/commit/66a6cc4901b1acd99b0c4541f88a1d8e0a9b0888)) by [@L-1124](https://github.com/L-1124)
+
+### Revert
+
+* **(models)** 回退 BaseModel 额外字段处理策略为 extra='ignore' ([f6691e0](https://github.com/L-1124/QQMusicApi/commit/f6691e078b87a45f5178d7a018f9a1bd0d5e391a)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(client)** 支持 zzc 请求签名 ([eb4eb66](https://github.com/L-1124/QQMusicApi/commit/eb4eb66f5c20c2adbe430bbfb11140d0431d48d5)) by [@L-1124](https://github.com/L-1124)
+* **(core)** 支持在使用 allow_error_codes 放行时强制解析模型 ([fac2a71](https://github.com/L-1124/QQMusicApi/commit/fac2a71bfb2f2ea700d59215a439fc65b40461f2)) by [@L-1124](https://github.com/L-1124)
+* **(core)** 支持通过 override_comm 彻底替代通用请求载荷 ([72edb4f](https://github.com/L-1124/QQMusicApi/commit/72edb4f3cc96a063643f2d58b92d41722ad95e8f)) by [@L-1124](https://github.com/L-1124)
+* **(song)** 添加新的曲谱相关 API和相关示例 ([9c461db](https://github.com/L-1124/QQMusicApi/commit/9c461dbdff15acf804ae047a7bc827cd6b1e7dd5)) by [@L-1124](https://github.com/L-1124)
+* **(song)** 支持 HasSheetMusic 接口检查歌曲是否有曲谱 ([94723ff](https://github.com/L-1124/QQMusicApi/commit/94723ffda911f74d680f7f661e9436bba74c3612)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 补充 requirements.txt ([d806214](https://github.com/L-1124/QQMusicApi/commit/d80621477635f6e0ad3589116cbb97c75e31dc6c)) by [@L-1124](https://github.com/L-1124)
+
+### 性能优化
+
+* **(qrc)** 优化自定义 3DES 解密性能并补充测试 ([0b808a5](https://github.com/L-1124/QQMusicApi/commit/0b808a5537643f2c3bd0ef94e5c72263ec378bb8)) by [@L-1124](https://github.com/L-1124)
+
+### 构建配置
+
+* **(web)** 在 Dockerfile 运行命令中添加 --no-sync 防止容器运行期同步 dev 依赖 ([cf1fbc5](https://github.com/L-1124/QQMusicApi/commit/cf1fbc5523c83b21734d82763a89aef450825674)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @github-actions[bot]
+
+## [[0.6.5](https://github.com/L-1124/QQMusicApi/compare/v0.6.4..v0.6.5)] - 2026-06-12
+
+### Bug 修复
+
+* **(core)** 开启 allow_incoming_cookies=False 防止上下请求的 cookies 污染 ([1cd1b69](https://github.com/L-1124/QQMusicApi/commit/1cd1b69338ffa2f26409480490b18b9c9080a29e)) by [@L-1124](https://github.com/L-1124)
+* **(login)** `Platform.WEB` 的 `check_expired` 总是返回 True ([f0b4533](https://github.com/L-1124/QQMusicApi/commit/f0b4533e7c172b6cb5b0556fbd7ff13e8b20f4c7)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @github-actions[bot]
+
+## [[0.6.4](https://github.com/L-1124/QQMusicApi/compare/v0.6.3..v0.6.4)] - 2026-06-12
+
+### Bug 修复
+
+* **(models)** 修复没有 musickey 时误判为 QQ 登录的问题 ([9b122a7](https://github.com/L-1124/QQMusicApi/commit/9b122a77f418d85f1926da889846c61a55bf70a2)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(models)** 修改 BaseModel 的 model_config 设置，允许额外字段 ([12a2334](https://github.com/L-1124/QQMusicApi/commit/12a2334dbde580930b167c728998b6310508597e)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @github-actions[bot]
+
+## [[0.6.3](https://github.com/L-1124/QQMusicApi/compare/v0.6.2..v0.6.3)] - 2026-06-12
+
+### Bug 修复
+
+* **(models)** 修复 jsonpath 通配字段单条解包与收藏 MV subcode 别名不匹配 ([b31f802](https://github.com/L-1124/QQMusicApi/commit/b31f802bad06489315b9b1d3e15f141bcbcde121)) by [@jinzhongjia](https://github.com/jinzhongjia) in [#259](https://github.com/L-1124/QQMusicApi/pull/259)
+* **(tests)** 修复 handle_unavailable_api_errors fixture 无法正确捕获测试执行期异常并跳过的问题 ([412d6cf](https://github.com/L-1124/QQMusicApi/commit/412d6cf17d18c97f4fb0ebff9be86f3c86566120)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(user)** get_vip_info 响应模型补充会员身份字段 ([6504373](https://github.com/L-1124/QQMusicApi/commit/650437317290c4905bc81fefed169a9e725f7c29)) by [@jinzhongjia](https://github.com/jinzhongjia) in [#258](https://github.com/L-1124/QQMusicApi/pull/258)
+
+### 功能重构
+
+* **(models)** field_validator → Annotated + BeforeValidator ([5505ed1](https://github.com/L-1124/QQMusicApi/commit/5505ed1fd1630f4e7803a86eb40c7eaf113f8382)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @jinzhongjia [#259](https://github.com/L-1124/QQMusicApi/pull/259)
+* @github-actions[bot]
+
+## [[0.6.2](https://github.com/L-1124/QQMusicApi/compare/v0.6.1..v0.6.2)] - 2026-06-08
+
+### Bug 修复
+
+* **(core)** 将 niquests 网络异常转换为`NetworkError`抛出" ([ff659c5](https://github.com/L-1124/QQMusicApi/commit/ff659c57dae8ad73db74cb00c5ba092b28f36466)) by [@L-1124](https://github.com/L-1124)
+* **(core)** 修复 ANDROID 会话初始化的循环依赖和缓存失效问题 ([4f9be43](https://github.com/L-1124/QQMusicApi/commit/4f9be437724497a789265ede40368628858aea47)) by [@L-1124](https://github.com/L-1124)
+* **(recommend)** 更新获取猜你喜欢推荐接口，支持传入 Credential, 添加 uid 字段到版本策略 ([81062d0](https://github.com/L-1124/QQMusicApi/commit/81062d0091883abb6904562a4ce5223c295d2b24)) by [@L-1124](https://github.com/L-1124)
+
+### 功能更新
+
+* **(core)** 添加 getSession 匿名会话初始化和设备 OpenUDID 持久化 ([9a4532e](https://github.com/L-1124/QQMusicApi/commit/9a4532e922d3805ba60bc31b213efddbc4c18702)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 补充评论增删路由及推荐认证支持 ([08c9137](https://github.com/L-1124/QQMusicApi/commit/08c9137cb8adcc4ce29c0843f25b4a160819839b)) by [@L-1124](https://github.com/L-1124)
+
+### 功能重构
+
+* **(web)** 重构日志系统 ([20fe8c6](https://github.com/L-1124/QQMusicApi/commit/20fe8c62af0477c5bf1e4afd82f08dcd96881031)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 统一代码风格与日志惰性求值 ([4ba0bf0](https://github.com/L-1124/QQMusicApi/commit/4ba0bf06b0e3a88bda6efea699c60ec068b16e91)) by [@L-1124](https://github.com/L-1124)
+* **(web)** 补齐路由辅助函数与应用入口类型注解 ([080b2fe](https://github.com/L-1124/QQMusicApi/commit/080b2fe99969f7256005c5a2f23793cacfd6db85)) by [@L-1124](https://github.com/L-1124)
+* **(web/routing)** 补齐路由类型与参数校验器类型注解 ([bcedc66](https://github.com/L-1124/QQMusicApi/commit/bcedc66bbb34d768957b36493250e067c4714e74)) by [@L-1124](https://github.com/L-1124)
+
+### 贡献者
+
+* @L-1124
+* @github-actions[bot]
+
 ## [[0.6.1](https://github.com/L-1124/QQMusicApi/compare/v0.6.0..v0.6.1)] - 2026-05-20
 
 ### Bug 修复

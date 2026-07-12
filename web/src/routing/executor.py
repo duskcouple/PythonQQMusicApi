@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from qqmusic_api import Credential
 from qqmusic_api.core.exceptions import CredentialExpiredError
 
-from ..core.auth import configured_credential_for_api
+from ..core.auth import configured_credential_for_api, refresh_and_store
 from ..core.cache import cached_response, make_cache_key
 from ..core.credential_store import CredentialStore, credential_has_login
 from ..core.deps import get_credential_store
@@ -22,6 +22,17 @@ from .route_types import AuthPolicy, RouteContext
 logger = logging.getLogger(__name__)
 
 _VALIDATION_ERROR_TYPES = (KeyError, TypeError, ValueError)
+_CREDENTIAL_REQUIRED_CACHE: dict[tuple[str, str], bool] = {}
+
+
+def _requires_credential(client: Any, module_name: str, method_name: str) -> bool:
+    key = (module_name, method_name)
+    if key not in _CREDENTIAL_REQUIRED_CACHE:
+        module = getattr(client, module_name)
+        bound_method = getattr(module, method_name)
+        sig = inspect.signature(bound_method)
+        _CREDENTIAL_REQUIRED_CACHE[key] = "credential" in sig.parameters
+    return _CREDENTIAL_REQUIRED_CACHE[key]
 
 
 @runtime_checkable
@@ -38,43 +49,50 @@ async def execute_route(context: RouteContext) -> Any:
     route = context.route
     params = dict(context.params)
     cache_ttl = route.cache.ttl if route.cache is not None else None
-    credential = None
-    logger.debug(f"执行路由: {route.module}.{route.method}, 路径: {route.path}")
+    resolved_credential = None
+    logger.debug("执行路由: %s.%s, 路径: %s", route.module, route.method, route.path)
     if route.auth is AuthPolicy.COOKIE_OR_DEFAULT:
-        credential = await _resolve_credential(context)
-        params["credential"] = credential
+        resolved_credential = await _resolve_credential(context)
 
     async def invoke() -> Any:
-        return await _invoke_route(context, params)
+        return await _invoke_route(context, params, resolved_credential)
 
     async def invoke_with_retry() -> Any:
+        nonlocal resolved_credential
         try:
             return await invoke()
         except CredentialExpiredError:
-            if credential is None:
+            if resolved_credential is None:
                 raise
-            logger.warning(f"凭证错误, 准备刷新凭证 {credential.musicid}")
-            refreshed = await _refresh_credential(context, credential)
-            params["credential"] = refreshed
-            logger.info(f"凭证已刷新, 重试请求: {route.module}.{route.method}")
-            return await invoke()
+            logger.warning("凭证错误, 准备刷新凭证 %s", resolved_credential.musicid)
+            refreshed = await _refresh_credential(context, resolved_credential)
+            resolved_credential = refreshed
+            logger.info("凭证已刷新, 重试请求: %s.%s", route.module, route.method)
+            try:
+                return await invoke()
+            except CredentialExpiredError:
+                logger.exception("凭证 %s 刷新后依然失效, 标记为无效", resolved_credential.musicid)
+                store = get_credential_store(context.request)
+                if isinstance(store, CredentialStore):
+                    await run_sync(store.mark_invalid, resolved_credential.musicid)
+                raise
 
     if cache_ttl is not None:
         cache_key = make_cache_key(route.path, params)
         hit = await context.cache.get(cache_key)
         if hit is not None:
-            logger.debug(f"缓存命中: {route.path}")
-            return cached_response(hit, cache_ttl)
-        logger.debug(f"缓存未命中: {route.path}, 准备执行路由")
+            logger.debug("缓存命中: %s", route.path)
+            return cached_response(hit, cache_ttl, context.request)
+        logger.debug("缓存未命中: %s, 准备执行路由", route.path)
         result = _wrap_success(await invoke_with_retry())
         await context.cache.set(cache_key, result, cache_ttl)
-        logger.debug(f"缓存已更新: {route.path}")
-        return cached_response(result, cache_ttl)
+        logger.debug("缓存已更新: %s", route.path)
+        return cached_response(result, cache_ttl, context.request)
 
     return _wrap_success(await invoke_with_retry())
 
 
-async def _invoke_route(context: RouteContext, params: dict[str, Any]) -> Any:
+async def _invoke_route(context: RouteContext, params: dict[str, Any], resolved_credential: Credential | None) -> Any:
     if context.route.adapter is not None:
         adapter_context = RouteContext(
             request=context.request,
@@ -82,10 +100,15 @@ async def _invoke_route(context: RouteContext, params: dict[str, Any]) -> Any:
             cache=context.cache,
             route=context.route,
             params=params,
-            credential=params.get("credential"),
+            credential=resolved_credential,
         )
         result = context.route.adapter(adapter_context)
     else:
+        if resolved_credential is not None and _requires_credential(
+            context.client, context.route.module, context.route.method
+        ):
+            params["credential"] = resolved_credential
+
         module = getattr(context.client, context.route.module)
         bound_method = getattr(module, context.route.method)
         result = bound_method(**params)
@@ -116,7 +139,7 @@ def _model_values(model: BaseModel) -> dict[str, Any]:
 
 async def _resolve_credential(context: RouteContext) -> Credential:
     credential = context.credential or Credential()
-    logger.debug(f"解析凭证, 初始 musicid: {credential.musicid}")
+    logger.debug("解析凭证, 初始 musicid: %s", credential.musicid)
     resolved = await configured_credential_for_api(
         context.request,
         context.client,
@@ -126,28 +149,27 @@ async def _resolve_credential(context: RouteContext) -> Credential:
     if not credential_has_login(resolved):
         logger.error("凭证解析失败: 无有效登录凭证")
         raise HTTPException(status_code=401, detail="未提供有效的登录凭证")
-    logger.debug(f"凭证解析成功: musicid {resolved.musicid}")
+    logger.debug("凭证解析成功: musicid %s", resolved.musicid)
     return resolved
 
 
 async def _refresh_credential(context: RouteContext, credential: Credential) -> Credential:
     store = get_credential_store(context.request)
     if not isinstance(store, CredentialStore) or not credential_has_login(credential):
-        logger.error(f"无法刷新凭证 {credential.musicid}: 存储不可用或凭证无效")
+        logger.error("无法刷新凭证 %s: 存储不可用或凭证无效", credential.musicid)
         raise CredentialExpiredError("登录凭证已失效", code=0)
     try:
-        logger.info(f"刷新凭证 {credential.musicid}")
-        refreshed = await context.client.login.refresh_credential(credential)
-        await run_sync(store.update, refreshed)
-        logger.info(f"凭证 {credential.musicid} 刷新成功")
+        logger.info("开始刷新凭证 %s", credential.musicid)
+        refreshed = await refresh_and_store(context.client, store, credential)
+        logger.info("凭证 %s 刷新成功", credential.musicid)
         return refreshed
     except Exception as exc:
-        logger.error(f"凭证 {credential.musicid} 刷新失败: {exc}", exc_info=True)
-        await run_sync(store.mark_invalid, credential.musicid)
-        raise
+        raise CredentialExpiredError("登录凭证已失效", code=0) from exc
 
 
 def _wrap_success(result: Any) -> Any:
     if isinstance(result, ApiResponse | Response):
         return result
+    if isinstance(result, bool):
+        return success_response(None) if result else ApiResponse(code=-1, msg="操作失败")
     return success_response(result)
