@@ -5,7 +5,7 @@ from typing import Any, NamedTuple
 
 from qqmusic_api import Platform
 
-from ..core.pagination import BatchRefreshStrategy, RefreshMeta, ResponseAdapter
+from ..core.pagination import BatchRefreshStrategy
 from ..models.request import Credential
 from ..models.song import (
     GetCdnDispatchResponse,
@@ -161,6 +161,19 @@ class SpecialSongFileType(BaseSongFileType):
     THERAPY = ("AA01", ".ogg")
 
 
+class RingSongFileType(BaseSongFileType):
+    """彩铃文件类型.
+
+    + RING_128: 高品质彩铃 (128k)
+    + RING_96: 标准彩铃 (96k)
+    + RING_48: 低品质彩铃 (48k)
+    """
+
+    RING_128 = ("R500", ".mp3")
+    RING_96 = ("R400", ".m4a")
+    RING_48 = ("R200", ".m4a")
+
+
 class SongFileInfo(NamedTuple):
     """歌曲文件信息.
 
@@ -177,36 +190,64 @@ class SongFileInfo(NamedTuple):
     media_mid: str | None = None
 
 
+class SongQueryInfo(NamedTuple):
+    """歌曲查询信息.
+
+    Attributes:
+        id: 歌曲 ID.
+        mid: 歌曲 MID.
+        song_type: 歌曲类型.
+    """
+
+    id: int | None = None
+    mid: str | None = None
+    song_type: int | None = None
+
+
 class SongApi(ApiModule):
     """歌曲相关 API 模块类."""
 
     _GET_SONG_URLS_MAX_MID = 100
     _SONG_URL_FALLBACK_DOMAIN = "https://isure.stream.qqmusic.qq.com/"
 
-    def query_song(self, value: list[int] | list[str]):
-        """根据 id 或 mid 获取歌曲信息.
+    def query_song(
+        self,
+        song_info: list[SongQueryInfo],
+    ):
+        """批量获取歌曲信息.
 
         Args:
-            value: 歌曲 ID 列表或 MID 列表.
+            song_info: SongQueryInfo 列表.
 
         Raises:
-            ValueError: 如果 `value` 为空.
+            ValueError: 如果 `song_info` 为空, 或参数不匹配.
         """
-        if not value:
-            raise ValueError("value 不能为空")
+        if not song_info:
+            raise ValueError("song_info 不能为空")
+
+        ids, mids, types = [], [], []
+        for item in song_info:
+            if (item.id is None) == (item.mid is None):
+                raise ValueError("SongQueryInfo 必须提供 id 或 mid 且不能同时提供")
+
+            if item.id is not None:
+                ids.append(item.id)
+            else:
+                mids.append(item.mid)
+            types.append(item.song_type or 0)
+
         params: dict[str, Any] = {
-            "types": [0 for _ in range(len(value))],
-            "modify_stamp": [0 for _ in range(len(value))],
             "ctx": 0,
             "client": 1,
+            "types": types,
+            "modify_stamp": [0] * len(types),
         }
-        numeric_values = [isinstance(item, int) or (isinstance(item, str) and item.isdecimal()) for item in value]
-        if all(numeric_values):
-            params["ids"] = [int(v) for v in value]
-        elif any(numeric_values):
-            raise ValueError("value 不能混合歌曲 ID 与 MID")
-        else:
-            params["mids"] = [str(v) for v in value]
+
+        if ids:
+            params["ids"] = ids
+        if mids:
+            params["mids"] = mids
+
         return self._build_request(
             module="music.trackInfo.UniformRuleCtrl",
             method="CgiGetTrackInfo",
@@ -336,16 +377,12 @@ class SongApi(ApiModule):
             method="GetRelatedPlaylist",
             param={"songid": songid, "vecPlaylist": last or []},
             response_model=GetRelatedSonglistResponse,
-            refresh_meta=RefreshMeta(
-                strategy=BatchRefreshStrategy(refresh_key="vecPlaylist"),
-                adapter=ResponseAdapter(
-                    has_more_flag="has_more",
-                    cursor=lambda response: (
-                        [playlist.id for playlist in response.songlist] if response.songlist else None
-                    ),
-                ),
+            pager_strategy=BatchRefreshStrategy[GetRelatedSonglistResponse](
+                refresh_key="vecPlaylist",
+                has_more_extractor=lambda r: bool(r.has_more),
+                cursor_extractor=lambda r: [playlist.id for playlist in r.songlist] if r.songlist else None,
             ),
-        )
+        ).with_extractor(lambda r: r.songlist)
 
     def get_related_mv(self, songid: int, last_mvid: str | None = None):
         """获取歌曲相关 MV.
@@ -359,14 +396,12 @@ class SongApi(ApiModule):
             method="GetSongRelatedMv",
             param={"songid": str(songid), "songtype": 1, "lastmvid": last_mvid or 0},
             response_model=GetRelatedMvResponse,
-            refresh_meta=RefreshMeta(
-                strategy=BatchRefreshStrategy(refresh_key="lastmvid"),
-                adapter=ResponseAdapter(
-                    has_more_flag="has_more",
-                    cursor=lambda response: response.mv[-1].id if response.mv else None,
-                ),
+            pager_strategy=BatchRefreshStrategy[GetRelatedMvResponse](
+                refresh_key="lastmvid",
+                has_more_extractor=lambda r: bool(r.has_more),
+                cursor_extractor=lambda r: r.mv[-1].id if r.mv else None,
             ),
-        )
+        ).with_extractor(lambda r: r.mv)
 
     def get_other_version(self, value: int | str):
         """获取歌曲其他版本.
@@ -409,8 +444,6 @@ class SongApi(ApiModule):
 
         Args:
             mid: 歌曲 MID.
-            begin: 起始偏移.
-            end: 返回数量.
             ttype: 曲谱来源类型. 0=用户上传, 1=引擎/AI曲谱, 2=虫虫钢琴.
         """
         if ttype == 2:

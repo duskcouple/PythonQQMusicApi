@@ -3,14 +3,17 @@
 from typing import TYPE_CHECKING, Any, overload
 
 from ..core.exceptions import CredentialInvalidError
+from ..core.pagination import PagerStrategy
+from ..core.request import (
+    AllowErrorCodes,
+    PaginatedRequest,
+    Request,
+    ResponseModel,
+)
 from ..core.versioning import Platform
 
 if TYPE_CHECKING:
-    from tarsio import TarsDict
-
     from ..core.client import Client
-    from ..core.pagination import PagerMeta, RefreshMeta
-    from ..core.request import AllowErrorCodes, PaginatedRequest, RefreshableRequest, Request, ResponseModel
     from ..models.request import Credential
 
 
@@ -80,219 +83,99 @@ class ApiModule:
         self,
         module: str,
         method: str,
-        param: dict[str, Any] | dict[int, Any],
+        param: dict[str, Any],
         response_model: None = None,
         comm: dict[str, Any] | None = None,
         *,
         override_comm: bool = False,
-        is_jce: bool = False,
         preserve_bool: bool = False,
         credential: "Credential | None" = None,
         platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
+        allow_error_codes: AllowErrorCodes | None = None,
         parse_on_allow: bool = False,
-        pager_meta: None = None,
-        refresh_meta: None = None,
+        pager_strategy: None = None,
         sign: bool = False,
         require_login: bool = False,
-    ) -> "Request[dict[str, Any]]": ...
+    ) -> Request[dict[str, Any]]: ...
 
     @overload
     def _build_request(
         self,
         module: str,
         method: str,
-        param: dict[str, Any] | dict[int, Any],
+        param: dict[str, Any],
         response_model: None = None,
         comm: dict[str, Any] | None = None,
         *,
         override_comm: bool = False,
-        is_jce: bool = False,
         preserve_bool: bool = False,
         credential: "Credential | None" = None,
         platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
+        allow_error_codes: AllowErrorCodes | None = None,
         parse_on_allow: bool = False,
-        pager_meta: "PagerMeta",
-        refresh_meta: None = None,
+        pager_strategy: PagerStrategy[dict[str, Any]],
         sign: bool = False,
         require_login: bool = False,
-    ) -> "PaginatedRequest[dict[str, Any]]": ...
+    ) -> PaginatedRequest[dict[str, Any]]: ...
 
     @overload
     def _build_request(
         self,
         module: str,
         method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: None = None,
+        param: dict[str, Any],
+        response_model: type[ResponseModel],
         comm: dict[str, Any] | None = None,
         *,
         override_comm: bool = False,
-        is_jce: bool = False,
         preserve_bool: bool = False,
         credential: "Credential | None" = None,
         platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
+        allow_error_codes: AllowErrorCodes | None = None,
         parse_on_allow: bool = False,
-        pager_meta: None = None,
-        refresh_meta: "RefreshMeta",
+        pager_strategy: None = None,
         sign: bool = False,
         require_login: bool = False,
-    ) -> "RefreshableRequest[dict[str, Any]]": ...
+    ) -> Request[ResponseModel]: ...
 
     @overload
     def _build_request(
         self,
         module: str,
         method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: None = None,
+        param: dict[str, Any],
+        response_model: type[ResponseModel],
         comm: dict[str, Any] | None = None,
         *,
         override_comm: bool = False,
-        is_jce: bool = True,
         preserve_bool: bool = False,
         credential: "Credential | None" = None,
         platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
+        allow_error_codes: AllowErrorCodes | None = None,
         parse_on_allow: bool = False,
-        pager_meta: None = None,
-        refresh_meta: None = None,
+        pager_strategy: PagerStrategy[ResponseModel],
         sign: bool = False,
         require_login: bool = False,
-    ) -> "Request[TarsDict]": ...
-
-    @overload
-    def _build_request(
-        self,
-        module: str,
-        method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: None = None,
-        comm: dict[str, Any] | None = None,
-        *,
-        override_comm: bool = False,
-        is_jce: bool = True,
-        preserve_bool: bool = False,
-        credential: "Credential | None" = None,
-        platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
-        parse_on_allow: bool = False,
-        pager_meta: "PagerMeta",
-        refresh_meta: None = None,
-        sign: bool = False,
-        require_login: bool = False,
-    ) -> "PaginatedRequest[TarsDict]": ...
-
-    @overload
-    def _build_request(
-        self,
-        module: str,
-        method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: None = None,
-        comm: dict[str, Any] | None = None,
-        *,
-        override_comm: bool = False,
-        is_jce: bool = True,
-        preserve_bool: bool = False,
-        credential: "Credential | None" = None,
-        platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
-        parse_on_allow: bool = False,
-        pager_meta: None = None,
-        refresh_meta: "RefreshMeta",
-        sign: bool = False,
-        require_login: bool = False,
-    ) -> "RefreshableRequest[TarsDict]": ...
-
-    @overload
-    def _build_request(
-        self,
-        module: str,
-        method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: type["ResponseModel"],
-        comm: dict[str, Any] | None = None,
-        *,
-        override_comm: bool = False,
-        is_jce: bool = False,
-        preserve_bool: bool = False,
-        credential: "Credential | None" = None,
-        platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
-        parse_on_allow: bool = False,
-        pager_meta: None = None,
-        refresh_meta: None = None,
-        sign: bool = False,
-        require_login: bool = False,
-    ) -> "Request[ResponseModel]": ...
-
-    @overload
-    def _build_request(
-        self,
-        module: str,
-        method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: type["ResponseModel"],
-        comm: dict[str, Any] | None = None,
-        *,
-        override_comm: bool = False,
-        is_jce: bool = False,
-        preserve_bool: bool = False,
-        credential: "Credential | None" = None,
-        platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
-        parse_on_allow: bool = False,
-        pager_meta: "PagerMeta",
-        refresh_meta: None = None,
-        sign: bool = False,
-        require_login: bool = False,
-    ) -> "PaginatedRequest[ResponseModel]": ...
-
-    @overload
-    def _build_request(
-        self,
-        module: str,
-        method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: type["ResponseModel"],
-        comm: dict[str, Any] | None = None,
-        *,
-        override_comm: bool = False,
-        is_jce: bool = False,
-        preserve_bool: bool = False,
-        credential: "Credential | None" = None,
-        platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
-        parse_on_allow: bool = False,
-        pager_meta: None = None,
-        refresh_meta: "RefreshMeta",
-        sign: bool = False,
-        require_login: bool = False,
-    ) -> "RefreshableRequest[ResponseModel]": ...
+    ) -> PaginatedRequest[ResponseModel]: ...
 
     def _build_request(
         self,
         module: str,
         method: str,
-        param: dict[str, Any] | dict[int, Any],
-        response_model: type["ResponseModel"] | None = None,
+        param: dict[str, Any],
+        response_model: type[ResponseModel] | None = None,
         comm: dict[str, Any] | None = None,
         *,
         override_comm: bool = False,
-        is_jce: bool = False,
         preserve_bool: bool = False,
         credential: "Credential | None" = None,
         platform: Platform | None = None,
-        allow_error_codes: "AllowErrorCodes | None" = None,
+        allow_error_codes: AllowErrorCodes | None = None,
         parse_on_allow: bool = False,
-        pager_meta: "PagerMeta | None" = None,
-        refresh_meta: "RefreshMeta | None" = None,
+        pager_strategy: PagerStrategy[Any] | None = None,
         sign: bool = False,
         require_login: bool = False,
-    ) -> "Request[Any] | PaginatedRequest[Any] | RefreshableRequest[Any]":
+    ) -> Request[Any] | PaginatedRequest[Any]:
         """构建可 await 的请求描述符.
 
         Args:
@@ -302,14 +185,12 @@ class ApiModule:
             response_model: 用于解析响应数据的 Pydantic 模型.
             comm: 附加的通用请求参数. 行为受 `override_comm` 影响.
             override_comm: 为 True 时, `comm` 将彻底替代自动生成的参数; 为 False 时, 将与生成参数进行合并更新.
-            is_jce: 是否作为 JCE (Tars) 请求发送.
             preserve_bool: 是否保留布尔值原样 (默认转为 0/1 整型).
             credential: 本次请求专用的凭证. 默认使用客户端当前凭证.
             platform: 本次请求的平台标识. 默认使用客户端所属平台.
             allow_error_codes: 允许放行的业务非零错误码.
             parse_on_allow: 为 True 时, 匹配 `allow_error_codes` 的响应仍走模型解析而非返回原始字典.
-            pager_meta: 分页组件元数据. 提供后则升级为 `PaginatedRequest`.
-            refresh_meta: 刷新组件元数据. 提供后则升级为 `RefreshableRequest`.
+            pager_strategy: 分页策略描述符. 提供后则升级为 `PaginatedRequest`.
             sign: 是否对请求进行签名.
             require_login: 为 True 时, 在构建请求前校验凭证有效性.
 
@@ -317,13 +198,9 @@ class ApiModule:
             组装好的 Request 或衍生子类描述符.
 
         Raises:
-            ValueError: 如果同时提供 pager_meta 和 refresh_meta 时抛出.
             CredentialInvalidError: 如果 require_login 为 True 且凭证无效时抛出.
         """
-        from ..core.request import PaginatedRequest, RefreshableRequest, Request
-
-        if pager_meta is not None and refresh_meta is not None:
-            raise ValueError("pager_meta 与 refresh_meta 不能同时声明")
+        from ..core.request import PaginatedRequest, Request
 
         if require_login:
             credential = self._require_login(credential)
@@ -336,7 +213,6 @@ class ApiModule:
             "response_model": response_model,
             "comm": comm,
             "override_comm": override_comm,
-            "is_jce": is_jce,
             "preserve_bool": preserve_bool,
             "credential": credential,
             "platform": platform,
@@ -344,8 +220,6 @@ class ApiModule:
             "parse_on_allow": parse_on_allow,
             "sign": sign,
         }
-        if pager_meta is not None:
-            return PaginatedRequest(**common_kwargs, pager_meta=pager_meta)
-        if refresh_meta is not None:
-            return RefreshableRequest(**common_kwargs, refresh_meta=refresh_meta)
+        if pager_strategy is not None:
+            return PaginatedRequest(**common_kwargs, pager_strategy=pager_strategy)
         return Request(**common_kwargs)

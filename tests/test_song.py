@@ -3,19 +3,38 @@
 import pytest
 
 from qqmusic_api import Client
-from qqmusic_api.modules.song import EncryptedSongFileType, SongFileInfo, SongFileType
+from qqmusic_api.core.exceptions import CgiApiException
+from qqmusic_api.modules.song import EncryptedSongFileType, SongFileInfo, SongFileType, SongQueryInfo
 
 
-@pytest.mark.parametrize("value", [[100], ["003w2xz20QlUZt"]])
-async def test_query_song(client: Client, value: list[int] | list[str]) -> None:
+@pytest.mark.parametrize(
+    "value",
+    [
+        [SongQueryInfo(id=107479170)],
+        [SongQueryInfo(mid="003w2xz20QlUZt")],
+        [SongQueryInfo(id=107479170, song_type=1)],
+        [SongQueryInfo(id=2314161, song_type=113)],
+        [SongQueryInfo(id=107479170), SongQueryInfo(id=2314161, song_type=113)],
+    ],
+)
+async def test_query_song(
+    client: Client,
+    value: list[SongQueryInfo],
+) -> None:
     """测试查询歌曲信息."""
-    result = await client.song.query_song(value)
-    assert result.tracks
+    try:
+        result = await client.song.query_song(value)
+        assert result.tracks
+    except CgiApiException as e:
+        if e.code == 103902:
+            pytest.skip("特定特殊歌曲无权限或已下架 (103902)")
+        else:
+            raise
 
 
 async def test_query_song_empty_value(client: Client) -> None:
     """测试空列表查询歌曲时抛出异常."""
-    with pytest.raises(ValueError, match="value 不能为空"):
+    with pytest.raises(ValueError, match="song_info 不能为空"):
         await client.song.query_song([])
 
 
@@ -66,9 +85,11 @@ async def test_get_related_mv(client: Client) -> None:
 
 async def test_get_related_songlist_refresh(client: Client) -> None:
     """测试歌曲相关歌单支持换一批."""
-    refresher = client.song.get_related_songlist(100).refresh()
-    first_batch = await refresher.first()
-    next_batch = await refresher.refresh()
+    req1 = client.song.get_related_songlist(100)
+    first_batch = await req1
+    req2 = req1.next_request(first_batch)
+    assert req2 is not None
+    next_batch = await req2
 
     assert first_batch.songlist
     assert next_batch.songlist
@@ -77,9 +98,11 @@ async def test_get_related_songlist_refresh(client: Client) -> None:
 
 async def test_get_related_mv_refresh(client: Client) -> None:
     """测试歌曲相关 MV 支持换一批."""
-    refresher = client.song.get_related_mv(1114857).refresh()
-    first_batch = await refresher.first()
-    next_batch = await refresher.refresh()
+    req1 = client.song.get_related_mv(1114857)
+    first_batch = await req1
+    req2 = req1.next_request(first_batch)
+    assert req2 is not None
+    next_batch = await req2
 
     assert first_batch.mv
     assert next_batch.mv
